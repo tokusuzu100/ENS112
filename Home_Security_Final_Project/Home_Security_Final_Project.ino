@@ -1,165 +1,88 @@
 #include <Servo.h>
+#include <Wire.h>
 #include "HUSKYLENS.h"
-#include <SoftwareSerial.h>
 #include <DHT.h>
-Servo myServo;
 
-//main sensors
-const int soundpin = 2; //add sound bits
-const int motionsensor = 13; //
-const int noisesensor = 10;//
-const int temp_humiditysensor = 20; //
-
-
-
-// other functions
+// Hardware pins
+const int soundpin = 2; // Reserved for a future buzzer/alarm output
+const int motionsensor = 13;
+const int noisesensor = 10;
+const int temp_humiditysensor = 20;
 const int redpin = 0;
 const int greenpin = 0;
 const int bluepin = 0;
 const int buttonswitch = 3;
-boolean locked = false;
 
 #define DHTTYPE DHT11
+
+Servo myServo;
 DHT dht(temp_humiditysensor, DHTTYPE);
-
 HUSKYLENS huskylens;
-bool systemArmed = false;
-bool lastButtonState = LOW;
 
+bool systemArmed = false;
+bool lastButtonState = HIGH;
 const float Regular_Room_Temp = 77.0;
 
-//int knockVal;
-//int statusofbutton = 0;
+void setRGBColor(int red, int green, int blue);
+void triggerAlarm();
+void activateHuskyLensScan();
 
 void setup() {
-  pinMode(soundpin, OUTPUT);
+  Serial.begin(9600);
   pinMode(motionsensor, INPUT);
   pinMode(noisesensor, INPUT);
   pinMode(buttonswitch, INPUT_PULLUP);
-  
+
   dht.begin();
   Wire.begin();
   myServo.attach(9);
   myServo.write(0);
-  
 
   while (!huskylens.begin(Wire)) {
-    Serial.println(F("Your virtual dog is hungry foo"));
+    Serial.println(F("HuskyLens not detected; check its wiring."));
     delay(1000);
   }
-  Serial.println(F("Your virtual pet is starting up ..."));
-  
-  setRGBColor(0, 0, 255); // Blue means unarmed
+  Serial.println(F("Security system ready."));
+  setRGBColor(0, 0, 255); // Blue means disarmed
 }
 
 void loop() {
-  // 1. Check On/Off Button Switch
-  bool ButtonStatus = digitalRead(buttonswitch);
-  if (ButtonStatus == LOW && lastButtonState == HIGH) {
+  const bool buttonState = digitalRead(buttonswitch);
+  if (buttonState == LOW && lastButtonState == HIGH) {
     systemArmed = !systemArmed;
-    delay(200); // Debounce delay
-    if (systemArmed && locked == false) {
-      locked = true;
-      myServo.write(90);
-      Serial.println(F("Arms up, lock active"));
-      setRGBColor(255, 0, 0); // Red for Armed
-    } else {
-      locked = false;
-      myServo.write(0);
-      Serial.println(F("Arms down, lock loose"));
-      setRGBColor(0, 0, 255); // Blue for Disarmed
-    }
-  }
+    delay(200); // Debounce
 
-  lastButtonState = ButtonStatus;
-
-  // Security Checks (Only if Armed)
-  if (systemArmed) {
-    // checking humidity and temperature
-    float humidity = dht.readHumidity();
-    float tempF = dht.readTemperature(true);
-
-    // Read sound and motion sensors   // change the name so that its noiseSensor, easier to read
-    int soundDetected = digitalRead(noisesensor);
-    int motionDetected = digitalRead(motionsensor);
-    
-    if (soundDetected == HIGH) {
-      Serial.println(F("Sound detected! Checking motion..."));
-      
-      if (motionDetected == HIGH) {
-        Serial.println(F("Yoo motion detected after sound! Activating HuskyLens..."));
-        triggerAlarm(); // Optional visual cue
-        activateHuskyLensScan();
-      }
-    } 
-    else {
-      // If sound and motion did NOT activate, check temperature fallback
-      if (!isnan(tempF) && tempF > Regular_Room_Temp) {
-        Serial.print(F("Temp is high ("));
-        Serial.print(tempF);
-        Serial.println(F("F)! Activating HuskyLens fallback scan..."));
-        activateHuskyLensScan();
-=======
-  bool currentButtonState = digitalRead(buttonswitch);
-  if (currentButtonState == LOW && lastButtonState == HIGH) {
-    systemArmed = !systemArmed;
-    delay(200); // Debounce delay
     if (systemArmed) {
-      Serial.println(F("Arms"));
-      setRGBColor(255, 0, 0); // Red for Armed
+      myServo.write(90);
+      Serial.println(F("System armed; lock active."));
+      setRGBColor(255, 0, 0);
     } else {
-      Serial.println(F("System DISARMED."));
-      setRGBColor(0, 0, 255); // Blue for Disarmed
+      myServo.write(0);
+      Serial.println(F("System disarmed; lock released."));
+      setRGBColor(0, 0, 255);
     }
   }
-  lastButtonState = currentButtonState;
+  lastButtonState = buttonState;
 
-  //waterleak sensor
-  float humidity = dht.readHumidity();
-  float temperature = dht.readTemperature();
-  //int waterLeak = digitalRead(waterleaksensorpin);
-  
-  //if (waterLeak == HIGH) {
-  //  Serial.println(F("Yoo the water is leakingg"));
-  //  triggerAlarm();
-  //}
-
-  // 3. Security Checks (Only if Armed)
   if (systemArmed) {
-    // Check Motion
-    int motionDetected = digitalRead(motionsensor);
-    if (motionDetected == HIGH) {
-      Serial.println(F("Yoo someone moving up in your joint!"));
-      triggerAlarm();
-    }
+    const float tempF = dht.readTemperature(true);
+    const int soundDetected = digitalRead(noisesensor);
+    const int motionDetected = digitalRead(motionsensor);
 
-    // Check Noise
-    int noiseDetected = digitalRead(noisesensor);
-    if (noiseDetected == HIGH) {
-      Serial.println(F("Yoo someone is taking your food dawg"));
+    if (soundDetected == HIGH && motionDetected == HIGH) {
+      Serial.println(F("Sound and motion detected."));
       triggerAlarm();
-    }
-
-    // Check AI Camera (HuskyLens)
-    if (huskylens.request()) {
-      if (huskylens.isLearned()) {
-        Serial.println(F("AI Alert: SOMEONES TAKING YOUR DOG MAN"));
-        // Add custom logic here (e.g., unlock mechanism if recognized)
->>>>>>> Stashed changes
-      }
+      activateHuskyLensScan();
+    } else if (!isnan(tempF) && tempF > Regular_Room_Temp) {
+      Serial.print(F("High temperature: "));
+      Serial.print(tempF);
+      Serial.println(F(" F. Starting HuskyLens scan."));
+      activateHuskyLensScan();
     }
   }
 
-<<<<<<< Updated upstream
-  delay(200); // Small delay between loops
+  delay(200);
 }
-
-=======
-  delay(100);
-}
-
-// --- Helper Functions ---
->>>>>>> Stashed changes
 
 void setRGBColor(int red, int green, int blue) {
   analogWrite(redpin, red);
@@ -168,41 +91,23 @@ void setRGBColor(int red, int green, int blue) {
 }
 
 void triggerAlarm() {
-<<<<<<< Updated upstream
-  // Flash RGB LED purple/white
-=======
-  // Flash RGB LED purple/white or sound buzzer/lock
->>>>>>> Stashed changes
   for (int i = 0; i < 3; i++) {
-    setRGBColor(255, 0, 255); // Purple flash
+    setRGBColor(255, 0, 255);
     delay(200);
     setRGBColor(255, 255, 255);
     delay(200);
   }
-<<<<<<< Updated upstream
   setRGBColor(255, 0, 0); // Return to armed red
 }
 
 void activateHuskyLensScan() {
-  // need to register faces to not shot on sight
   if (huskylens.request()) {
     if (huskylens.isLearned()) {
-      Serial.println(F("AI Alert: Face/Object recognized and registered!"));
+      Serial.println(F("HuskyLens recognized a learned face/object."));
     } else {
-      Serial.println(F("AI Alert: Moving object detected, but face is not learned/recognized yet."));
+      Serial.println(F("HuskyLens detected something not learned yet."));
     }
   } else {
-    Serial.println(F("Check your wires, your dog might have bitten"));
+    Serial.println(F("HuskyLens request failed; check wiring."));
   }
 }
-
-
-=======
-  if (systemArmed) {
-    setRGBColor(255, 0, 0); // Return to armed red
-  } else {
-    setRGBColor(0, 0, 255); // Return to disarmed blue
-  }
-}
->>>>>>> Stashed changes
-//need to make rgb better, make the sound integrated into the system
