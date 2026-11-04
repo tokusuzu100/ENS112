@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 #include <Servo.h>
 #include "HUSKYLENS.h"
 #include <SoftwareSerial.h>
@@ -44,63 +43,17 @@ void setup() {
   myServo.write(0);
   
 
-=======
-#include "HUSKYLENS.h"
-#include <SoftwareSerial.h>
-#include <DHT.h>
-
-
-//main sensors
-const int soundpin = 2; //
-const int motionsensor = 13; //
-const int noisesensor = 10;//
-const int tempandhumiditysensor = 20; //
-const int knocklock = 6;
-const int huskylens = 9;
-
-// other functions
-const int redpin = 9;
-const int greenpin = 10;
-const int bluepin = 11;
-const int buttonswitch = 9;
-
-#define DHTTYPE DHT11
-DHT dht(dhtPin, DHTTYPE);
-
-HUSKYLENS huskylens;
-bool systemArmed = false;
-bool lastButtonState = HIGH;
-
-
-int knockVal;
-int statusofbutton = 0;
-
-void setup() {
-  //no water leak sensor pin
-  pinMode(motionsensor, INPUT);
-  pinMode(noisesensor, INPUT);
-  pinMode(knocklock, OUTPUT);
-  pinMode(buttonswitch,INPUT_PULLUP);
-  dht.begin();
-
-  Wire.begin();
->>>>>>> Stashed changes
   while (!huskylens.begin(Wire)) {
     Serial.println(F("Your virtual dog is hungry foo"));
     delay(1000);
   }
   Serial.println(F("Your virtual pet is starting up ..."));
   
-<<<<<<< Updated upstream
   setRGBColor(0, 0, 255); // Blue means unarmed
-=======
-  setRGBColor(0, 0, 255); // Blue means Standby/Disarmed
->>>>>>> Stashed changes
 }
 
 void loop() {
   // 1. Check On/Off Button Switch
-<<<<<<< Updated upstream
   bool ButtonStatus = digitalRead(buttonswitch);
   if (ButtonStatus == LOW && lastButtonState == HIGH) {
     systemArmed = !systemArmed;
